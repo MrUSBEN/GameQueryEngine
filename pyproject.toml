@@ -1,6 +1,6 @@
 [project]
 name = "game-query-engine"
-version = "0.7.1"
+version = "0.8.0"
 
 description = "Local game research database: filter by year/platform/size/score, pack to fit storage, export."
 requires-python = ">=3.10"

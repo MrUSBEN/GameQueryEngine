@@ -7,6 +7,17 @@ or a stack of discs, refresh any column online for just the games you picked, an
 No command line needed. Requires only **Python 3.10+** (no packages to install; `numpy`
 is optional and only speeds up packing).
 
+## Screenshots
+| Browse | Data | Status |
+|---|---|---|
+| [![Browse tab](samples/browse-tab.png)](samples/browse-tab.png) | [![Data tab](samples/data-tab.png)](samples/data-tab.png) | [![Status tab](samples/status-tab.png)](samples/status-tab.png) |
+
+* **Browse** — filter, sort and page through the whole database; every column (size, score, price, DRM,
+  genres) is filterable and editable in place.
+* **Data** — the numbered guide to bringing in games and filling gaps, source by source.
+* **Status** — a live, color-coded health check of the database itself: what's in it, when each part last
+  changed, and when it was last checked (see "Status tab" below).
+
 ## Start
 Double-click **Start Game Query Engine.bat** (Windows), **Start Game Query Engine.command** (macOS) or run
 `./start.sh` (Linux). Your browser opens at http://127.0.0.1:8765. The server listens on
@@ -37,11 +48,12 @@ Double-click **Start Game Query Engine.bat** (Windows), **Start Game Query Engin
    game, so marking the PS2 version also marks the PC version.
 6. **Columns ▾**: *Select all / Deselect all / Reset*. *Export → "only the columns I currently see"* uses it.
 
-## Closing the data gaps (title search, more sources, a Gaps report)
+## Closing the data gaps (title search, more sources)
 * **Title search ignores punctuation** when you don't type any: `ark survival` finds "ARK: Survival
   Evolved". Type the punctuation yourself (`name~"ark:"`) to search exactly as written.
-* **Gaps tab:** per platform, how many games have no year, score or genre (and no size, for PC), with
-  a few example titles. A long list of similarly-named examples usually means a matching problem more
+* **Status tab:** per platform, how many games have no year, score, genre, price or DRM (and no size,
+  for PC), with a few example titles — see "Status tab" below for the full picture (freshness, sources,
+  activity log). A long list of similarly-named examples usually means a matching problem more
   than missing data.
 * **Add every Steam game to your database** (Data tab): adds each real PC game on Steam — sized, dated,
   with genres and a score when Steam has one — skipping DLC, soundtracks, tools and non-Windows apps. This
@@ -101,7 +113,31 @@ Games on neither store (much of IGDB's catalogue) will stay unsized; no free bul
 * **Secrets are masked:** API keys, client secrets, tokens, passwords and Authorization headers never appear in a log
   line (enforced at the source and again by a filter on every output), so a log is safe to paste into a bug report.
 
-## Robustness fixes from real long runs
+## Status tab
+A live, color-coded health check of the database itself — built to answer "what did that last fetch
+actually do?" without guessing:
+* **Database overview:** totals (games, releases, claims recorded), database file size, schema version,
+  when the database was last fully updated, and how many safety-copy backups exist. A **Refresh** button
+  re-pulls everything live. Below it, a **Sources** table lists every source that has ever run — claims
+  contributed, how many times it's run, when it last did anything, and a status chip.
+* **What's in your database:** the old per-platform coverage table (moved here from the Data tab), now
+  with **Last updated** / **Last checked** columns and color-coded cells.
+* **Detailed platform breakdown:** a collapsible card per platform breaking coverage down field by field
+  (year, score, genre, size, price, DRM), each with a missing count, freshness, and a few example titles
+  still missing it.
+* **Recent activity:** every fetch, import, refresh and backup, newest first — including runs that found
+  nothing new, so a source that's "checked" but not "updated" is visible rather than invisible.
+* **Color coding**, used consistently across all three views:
+  * 🟢 **green** — updated in the last 2 days (the value actually changed)
+  * 🟡 **yellow** — checked in the last 14 days, nothing new found
+  * 🟠 **orange** — stale; hasn't been checked in a while
+  * 🔴 **red** — missing a large share of that field, or the last run failed
+
+Under the hood, an `activity_log` table records every source run, library update, refresh, import and
+backup regardless of whether it changed anything, which is what makes "recently updated" and "recently
+checked, no change" two different colors instead of one guess.
+
+
 * **A long Steam catalog/size run no longer crashes after ~1 hour.** The cause: `gevent.Timeout` (raised
   when a long-lived Steam connection goes stale) is deliberately a `BaseException`, not an `Exception`, so
   a plain `except Exception` retry - what this had - let it straight through and killed the whole job. Now
@@ -206,6 +242,32 @@ The app was renamed once (GameDex → Game Query Engine). To rename again: chang
 Add a new entry at the top for every release and bump `__version__` in `gqe/__init__.py`.
 
 <details open>
+<summary><b>0.8.0</b> — 2026-09-26: Status tab overhaul (renamed from Gaps), color-coded freshness, activity log</summary>
+
+* **"Gaps" tab renamed to "Status"** and rebuilt from the ground up into a proper database health screen,
+  in four sections: a **Database overview** (totals, file size, schema version, last full update, backups,
+  a Refresh button, and a per-source activity table); **"What's in your database"** (moved here from the
+  Data tab, now with Last updated / Last checked columns); a **detailed, collapsible per-platform
+  breakdown** (each field's missing count, freshness and example titles); and a **Recent activity** feed
+  (every fetch/import/refresh/backup, newest first, including runs that changed nothing).
+* **Color-coded freshness**, applied consistently to both the overview table and the detailed breakdown:
+  green = updated in the last 2 days, yellow = checked in the last 14 days with no change, orange = stale,
+  red = missing a large share of a field or the last run failed. This turns "did that button actually do
+  anything?" from a guess into something you can see at a glance.
+* **New `activity_log` table** (schema migration to v4) records every source run, library update, refresh,
+  CSV import, restore and backup download — whether or not it changed any data. It's what makes "recently
+  updated" (a value actually changed) distinguishable from "recently checked" (ran, found nothing new);
+  neither was tracked before this release. Hooked in centrally at the job runner, so no per-source adapter
+  code had to change, and it records the outcome even when a job fails or is cancelled.
+* **Gap detection extended to Price and DRM** (previously only year/score/genre/size were tracked), so the
+  detailed breakdown covers every column shown in Browse.
+* Screenshots added to the README (`samples/`).
+* 181 automated tests, unchanged in count but updated: the Gaps-tab UI test now exercises the Status tab's
+  rendering (missing counts, color chips, the moved coverage table, per-source activity), and
+  `gaps_report`'s test suite covers the two new columns.
+</details>
+
+<details>
 <summary><b>0.7.1</b> — 2026-09-23: fixed Wikidata failing twice in a row, and a wrong platform name</summary>
 
 * **Fixed a real report:** "Update → Wikidata" failed within seconds of a prior attempt, both times with

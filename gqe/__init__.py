@@ -2,4 +2,4 @@
 # Existing user data is adopted automatically if the old id is listed in paths.LEGACY_IDS.
 APP_NAME = "Game Query Engine"
 APP_ID = "gqe"
-__version__ = "0.7.1"
+__version__ = "0.8.0"
