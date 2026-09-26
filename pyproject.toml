@@ -1,0 +1,23 @@
+[project]
+name = "game-query-engine"
+version = "0.7.1"
+
+description = "Local game research database: filter by year/platform/size/score, pack to fit storage, export."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+fast = ["numpy"]   # vectorised knapsack for `pack`; pure-Python fallback exists
+
+[project.scripts]
+gqe = "gqe.cli:main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["gqe", "gqe.adapters"]
+
+[tool.setuptools.package-data]
+gqe = ["static/*.html"]

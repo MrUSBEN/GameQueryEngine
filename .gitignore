@@ -1,0 +1,20 @@
+# Your data never belongs in the repo. It lives in ~/.<app-id>/ by default; these lines are a
+# safety net in case you point the database/config at a path inside the checkout.
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+config.json
+cache/
+backups/
+local/
+.env
+__pycache__/
+*.pyc
+build/
+dist/
+*.egg-info/
+
+# your data folder (database, keys, cache, backups)
+data/

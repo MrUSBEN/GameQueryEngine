@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<datafile>
+  <header><name>Sony - PlayStation 2</name><description>Sample (fake sizes)</description></header>
+  <game name="Katamari Damacy (USA)"><category>Games</category><rom name="Katamari Damacy (USA).iso" size="1400000000" serial="SLUS-21008"/></game>
+  <game name="Katamari Damacy (Europe)"><category>Games</category><rom name="Katamari Damacy (Europe).iso" size="1450000000" serial="SLES-53000"/></game>
+  <game name="Okami (USA)"><category>Games</category><rom name="Okami (USA).iso" size="4200000000" serial="SLUS-21230"/></game>
+  <game name="Legend of Zelda, The - Wind Waker (USA) (Disc 1)"><category>Games</category><rom name="a.iso" size="1000000000"/></game>
+  <game name="Legend of Zelda, The - Wind Waker (USA) (Disc 2)"><category>Games</category><rom name="b.iso" size="1000000000"/></game>
+  <game name="Ico (USA) (Beta)"><category>Games</category><rom name="c.iso" size="900000000"/></game>
+  <game name="Ico (USA)"><category>Games</category><rom name="d.iso" size="1800000000"/></game>
+  <game name="Bully (USA)"><category>Games</category><rom name="e.iso" size="4400000000"/></game>
+  <game name="Ratchet &amp; Clank (Europe, Australia)"><category>Games</category><rom name="f.iso" size="2600000000"/></game>
+  <game name="Shadow of the Colossus (USA)"><category>Games</category><rom name="g.iso" size="3900000000"/></game>
+</datafile>

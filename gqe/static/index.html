@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Game Query Engine</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--ink:#1c2230;--mute:#6b7385;--line:#dfe3ea;--accent:#2f6fed;--accent-ink:#fff;--warn:#b45309;--ok:#15803d;--bad:#b91c1c;--row:#f1f4fa;
+  --s-green:#15803d;--s-green-bg:#e7f6ec;--s-yellow:#92720c;--s-yellow-bg:#fdf5da;--s-orange:#b45309;--s-orange-bg:#fdeee0;--s-red:#b91c1c;--s-red-bg:#fbe7e7;--s-blue:#1d4ed8;--s-blue-bg:#e6edfd;--s-purple:#6d28d9;--s-purple-bg:#f0e9fb}
+@media (prefers-color-scheme:dark){:root{--bg:#12151c;--panel:#1a1f2a;--ink:#e6e9f0;--mute:#939bb0;--line:#2b3242;--accent:#5b8cff;--accent-ink:#0b1020;--warn:#f59e0b;--ok:#4ade80;--bad:#f87171;--row:#202737;
+  --s-green:#4ade80;--s-green-bg:#173322;--s-yellow:#f4d35e;--s-yellow-bg:#3a3312;--s-orange:#f59e0b;--s-orange-bg:#3a2a12;--s-red:#f87171;--s-red-bg:#3a1d1d;--s-blue:#8ab4ff;--s-blue-bg:#182747;--s-purple:#c9a6ff;--s-purple-bg:#2a1f47}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:16px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header h1{font-size:18px;margin:0}
+.tab{background:none;border:0;padding:8px 12px;color:var(--mute);cursor:pointer;font:inherit;border-bottom:2px solid transparent}
+.tab.active{color:var(--ink);border-color:var(--accent)}
+.spacer{flex:1}
+button,select,input{font:inherit;color:inherit}
+button.btn{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+button.btn:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.link{background:none;border:0;color:var(--accent);cursor:pointer;padding:0}
+input[type=text],input[type=number],select{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+input[type=number]{width:84px}
+main{flex:1;min-height:0;display:flex}
+#tab-browse{display:flex;flex:1;min-height:0}
+aside{width:290px;flex:none;overflow:auto;padding:12px;background:var(--panel);border-right:1px solid var(--line)}
+aside section{margin-bottom:14px}
+aside h3{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin:0 0 6px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:2px 10px;cursor:pointer;user-select:none;font-size:13px}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip small{opacity:.7;margin-left:3px}
+.check{display:flex;gap:6px;align-items:center;margin:3px 0;color:var(--mute);font-size:13px}
+#results{flex:1;min-width:0;display:flex;flex-direction:column}
+.toolbar{display:flex;gap:8px;align-items:center;padding:8px 12px;flex-wrap:wrap;background:var(--panel);border-bottom:1px solid var(--line)}
+.count{font-weight:600}
+.scope{color:var(--mute)}
+.tablewrap{flex:1;overflow:auto}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 10px;text-align:left;white-space:nowrap;border-bottom:1px solid var(--line)}
+th{position:sticky;top:0;background:var(--panel);cursor:pointer;user-select:none;z-index:1}
+tbody tr:nth-child(even){background:var(--row)}
+td.num,th.num{text-align:right}
+td.name{max-width:380px;overflow:hidden;text-overflow:ellipsis}
+td[data-edit]{cursor:text}
+td[data-edit] input{width:110px}
+.tick{cursor:pointer;color:var(--mute);font-size:14px;margin-left:4px;opacity:.45}
+.tick.on{color:var(--ok);opacity:1;font-weight:700}
+.logbox{flex:1;min-height:320px;overflow:auto;background:#0d1117;color:#c9d1d9;font:12px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;padding:10px 12px;border-radius:8px;white-space:pre-wrap;margin:0}
+.ll .t{color:#6e7681}.ll.WARNING{color:#e3b341}.ll.ERROR,.ll.CRITICAL{color:#ff7b72}.ll.DEBUG{color:#8b949e}
+#tab-log{padding:14px;flex-direction:column;gap:10px}
+.help{margin:8px 0;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.help summary{cursor:pointer;color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;z-index:20;box-shadow:0 6px 24px rgba(0,0,0,.3)}
+.menu button.link{display:block;text-align:left;padding:5px 2px;width:100%;color:var(--ink)}
+.star{cursor:pointer;color:var(--mute);font-size:16px}
+.star.on{color:#e0a800}
+.est{color:var(--warn)}
+.pager{display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--panel);border-top:1px solid var(--line)}
+.banner{margin:12px;padding:12px 14px;border:1px solid var(--warn);border-radius:8px;background:var(--panel)}
+.empty{padding:40px;text-align:center;color:var(--mute)}
+#tab-data{padding:16px;overflow:auto;flex-direction:column;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;max-width:980px}
+.card h2{font-size:15px;margin:0 0 8px}
+.muted{color:var(--mute)}
+.msg{margin-top:8px}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+.stats td,.stats th{position:static;cursor:default}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--ink);padding:18px;max-width:640px;width:92%}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h2{margin:0 0 10px;font-size:16px}
+.field{margin:10px 0}.field>label{display:block;color:var(--mute);font-size:12px;margin-bottom:3px}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.bin{border:1px solid var(--line);border-radius:8px;margin:8px 0;overflow:hidden}
+.bin>div.h{display:flex;justify-content:space-between;padding:6px 10px;background:var(--row);font-weight:600}
+.bar{height:6px;background:var(--line)}.bar>i{display:block;height:6px;background:var(--accent)}
+.bin ul{margin:0;padding:6px 10px 8px 26px;max-height:180px;overflow:auto}
+.chip.off{border-color:var(--bad);color:var(--bad);text-decoration:line-through;background:transparent}
+.sidehead{position:sticky;top:-12px;z-index:3;display:flex;align-items:center;gap:8px;background:var(--panel);margin:-12px -12px 10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.pill{font-size:12px;color:var(--mute)}
+.clr{font-size:11px;margin-left:6px;text-transform:none;letter-spacing:0}
+.hint{font-size:12px;margin:0 0 12px}
+.cols{display:none;position:absolute;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.cols.open{display:block}
+
+#tab-status{padding:16px;overflow:auto;flex-direction:column;gap:18px}
+.st-head{display:flex;align-items:center;gap:10px;margin:0}
+.st-head h2{margin:0}
+.st-sub{color:var(--mute);margin:2px 0 12px}
+.st-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:4px}
+.st-metric{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--bg)}
+.st-metric b{display:block;font-size:19px}
+.st-metric span{color:var(--mute);font-size:12px}
+.chit{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.chit.green{background:var(--s-green-bg);color:var(--s-green)}
+.chit.yellow{background:var(--s-yellow-bg);color:var(--s-yellow)}
+.chit.orange{background:var(--s-orange-bg);color:var(--s-orange)}
+.chit.red{background:var(--s-red-bg);color:var(--s-red)}
+.chit.blue{background:var(--s-blue-bg);color:var(--s-blue)}
+.chit.purple{background:var(--s-purple-bg);color:var(--s-purple)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.green{background:var(--s-green)}.dot.yellow{background:var(--s-yellow)}.dot.orange{background:var(--s-orange)}.dot.red{background:var(--s-red)}.dot.blue{background:var(--s-blue)}.dot.purple{background:var(--s-purple)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);align-items:center;margin:2px 0 14px}
+.legend .chit{font-weight:400}
+.st-table{width:100%;border-collapse:collapse}
+.st-table th,.st-table td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.st-table th{color:var(--mute);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.st-table td.num,.st-table th.num{text-align:right}
+.st-table tbody tr:hover{background:var(--row)}
+.st-cell{border-radius:6px;padding:3px 8px;display:inline-block;min-width:44px;text-align:center;font-weight:600}
+.st-cell.green{background:var(--s-green-bg);color:var(--s-green)}
+.st-cell.yellow{background:var(--s-yellow-bg);color:var(--s-yellow)}
+.st-cell.orange{background:var(--s-orange-bg);color:var(--s-orange)}
+.st-cell.red{background:var(--s-red-bg);color:var(--s-red)}
+.plat-card{border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden}
+.plat-head{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--row);cursor:pointer;user-select:none}
+.plat-head b{font-size:14px}
+.plat-head .spacer{flex:1}
+.plat-head .chev{color:var(--mute);transition:transform .15s}
+.plat-card.open .plat-head .chev{transform:rotate(90deg)}
+.plat-body{display:none;padding:12px 14px}
+.plat-card.open .plat-body{display:block}
+.field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.field-card{border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.field-card .fh{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.field-card .fh b{font-size:13px}
+.field-meta{color:var(--mute);font-size:11.5px;line-height:1.5}
+.field-ex{color:var(--mute);font-size:11px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-feed{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto}
+.act-row{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
+.act-row .t{color:var(--mute);flex:none;width:90px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🎮 <span id="app-name">Game Query Engine</span> <small id="app-ver" class="muted"></small></h1>
+  <nav><button class="tab active" data-tab="browse">Browse</button><button class="tab" data-tab="data">Data</button><button class="tab" data-tab="log">Log</button><button class="tab" data-tab="status">Status</button></nav>
+  <span class="spacer"></span>
+  <button class="btn" id="jobpill" hidden style="max-width:380px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></button>
+  <button class="btn" id="jobcancel" hidden title="Stop the running job. Everything saved so far is kept.">Cancel</button>
+  <span class="muted" id="dbinfo"></span>
+  <button class="btn" id="quit" title="Stop the local server">Quit</button>
+</header>
+
+<main id="tab-browse">
+  <aside id="filters">
+    <div class="sidehead"><b>Filters</b><span class="pill" id="f-count">none active</span><span class="spacer"></span><button class="btn" id="f-clear" disabled>Clear all</button></div>
+    <p class="muted hint">Click a chip once to <b>include</b> it, twice to <b class="est" style="color:var(--bad)">exclude</b> it, a third time to clear it.</p>
+    <section><h3>Name</h3><input type="text" id="f-q" placeholder="Title contains…" style="width:100%">
+      <input type="text" id="f-qx" placeholder="Title does NOT contain… (a, b)" style="width:100%;margin-top:6px"></section>
+    <section><h3>Platform <button class="link clr" data-clr="platforms" hidden>clear</button></h3><div class="chips" id="f-platform"></div></section>
+    <section><h3>Year</h3>
+      <div class="row"><input type="number" id="f-yfrom" placeholder="from"><span class="muted">to</span><input type="number" id="f-yto" placeholder="to"></div>
+      <div class="chips" id="f-decades" style="margin-top:6px"></div>
+      <label class="check"><input type="checkbox" id="f-yunk"> include unknown year</label></section>
+    <section><h3>Size</h3>
+      <div class="row"><input type="number" id="f-smin" placeholder="min" step="any"><span class="muted">to</span><input type="number" id="f-smax" placeholder="max" step="any">
+        <select id="f-sunit"><option>MB</option><option selected>GB</option></select></div>
+      <div class="chips" id="f-spresets" style="margin-top:6px"></div>
+      <label class="check"><input type="checkbox" id="f-sknown"> only games with a known size</label>
+      <label class="check"><input type="checkbox" id="f-sexact"> exact sizes only (no estimates)</label>
+      <label class="check"><input type="checkbox" id="f-sunk"> include unknown size</label></section>
+    <section><h3>Review score (min)</h3>
+      <div class="row"><input type="range" id="f-score" min="0" max="100" value="0" style="flex:1"><b id="f-scoreval">any</b></div>
+      <label class="check"><input type="checkbox" id="f-scunk"> include unrated</label></section>
+    <section><h3>Price (max, USD)</h3>
+      <div class="row"><input type="number" id="f-pmax" placeholder="any" step="any"></div>
+      <label class="check"><input type="checkbox" id="f-punk"> include unknown price</label></section>
+    <section><h3>Genre <button class="link clr" data-clr="genres" hidden>clear</button></h3><div class="chips" id="f-genre"></div></section>
+    <section><h3>Region <button class="link clr" data-clr="regions" hidden>clear</button></h3><div class="chips" id="f-region"></div></section>
+    <section><h3>DRM <button class="link clr" data-clr="drm" hidden>clear</button></h3><div class="chips" id="f-drm"></div></section>
+    <section><h3>Mine</h3>
+      <div class="row"><select id="f-fav"><option value="">Favorites: any</option><option value="yes">favorites only</option><option value="no">hide favorites</option></select>
+      <select id="f-played"><option value="">Played: any</option><option value="yes">played only</option><option value="no">hide played</option></select></div>
+      <div class="row" style="margin-top:6px"><select id="f-set"><option value="">saved set: none</option></select><button class="link" id="f-setdel" hidden>delete</button></div></section>
+  </aside>
+
+  <section id="results">
+    <div class="toolbar">
+      <span class="count" id="count">…</span><span class="scope" id="scope"></span>
+      <span class="spacer"></span>
+      <button class="btn" id="b-clearsel" hidden>Clear selection</button>
+      <div style="position:relative"><button class="btn" id="b-cols">Columns ▾</button><div class="cols" id="colmenu"></div></div>
+      <button class="btn" id="b-refresh">↻ Refresh data…</button>
+      <button class="btn" id="b-pack">📦 Pack…</button>
+      <div style="position:relative"><button class="btn" id="b-mark">Mark ▾</button>
+        <div class="cols menu" id="markmenu">
+          <button class="link" data-flag="favorite" data-val="1">★ Mark as favorite</button>
+          <button class="link" data-flag="favorite" data-val="0">☆ Remove favorite</button>
+          <button class="link" data-flag="played" data-val="1">✓ Mark as played</button>
+          <button class="link" data-flag="played" data-val="0">✗ Mark as not played</button>
+        </div></div>
+      <button class="btn" id="b-set">Save as set…</button>
+      <button class="btn primary" id="b-export">⬇ Export…</button>
+    </div>
+    <div id="banner"></div>
+    <div class="tablewrap"><table id="grid"><thead></thead><tbody></tbody></table></div>
+    <div class="pager">
+      <button class="btn" id="p-prev">‹ Prev</button><span id="p-info"></span><button class="btn" id="p-next">Next ›</button>
+      <span class="spacer"></span><span class="muted">Rows per page</span>
+      <select id="p-size"><option>50</option><option selected>100</option><option>200</option><option>500</option></select>
+    </div>
+  </section>
+</main>
+
+<main id="tab-data" style="display:none">
+  <div class="card"><h2>Keep your database up to date</h2>
+    <p class="muted">For a database you've already built. Checks each source you've set up for anything new
+    since last time, and (in the second mode) tries to fill in values that are still missing for games you
+    already have. Sources you haven't set up are skipped with a note rather than stopping the rest.</p>
+    <div class="row"><button class="btn primary" id="ul-new">Update: new games only</button>
+      <button class="btn primary" id="ul-fill">Update: new games + fill gaps</button></div>
+    <p class="muted" style="margin:6px 0 0">"New games only" is quicker. "Fill gaps" also re-checks existing
+    games for anything still missing (size, year, score, genre, price) — it can take a while on a large
+    database, same as running the individual steps below, but only asks about what's actually missing.</p>
+    <div class="msg" id="ul-msg"></div><div id="ul-out"></div></div>
+
+  <div class="card"><h2>Backup &amp; transfer</h2>
+    <p class="muted">Your whole database in one file — build it once, then restore it on any other computer
+    instead of fetching everything again. API keys are not included; enter them again on the new computer.</p>
+    <div class="muted" id="db-info"></div>
+    <div class="row" style="margin-top:8px"><button class="btn primary" id="bk-dl">⬇ Download backup</button>
+      <input type="file" id="bk-file" accept=".zip,.db"><button class="btn" id="bk-restore">Restore from backup…</button></div>
+    <div class="msg" id="bk-msg"></div></div>
+
+  <div class="card"><h2>Import your own data (CSV)</h2>
+    <p class="muted">A CSV with an <b>id</b> column (the ID column in the table; enable it under Columns) plus any of: size, price, drm, release_date, orig_year, score, genres, category. Your values always take priority over automatic sources.</p>
+    <div class="row"><input type="file" id="c-file" accept=".csv"><button class="btn primary" id="c-go">Import CSV</button></div>
+    <div class="msg" id="c-msg"></div></div>
+
+  <h2 style="margin:22px 0 4px">Sources</h2>
+  <p class="muted" style="margin:0 0 14px">A suggested order, not a requirement: each group below builds on
+  the one before it, so working from the top usually gets you the most for the least time and setup.</p>
+
+  <h3 style="margin:0 0 4px">1. Bring in games</h3>
+  <p class="muted" style="margin:0 0 10px">Adds games to your database. Safe to repeat — nothing gets duplicated.</p>
+
+  <div class="card"><h2>GOG</h2>
+    <p class="muted">No key needed. Adds every GOG game with its original release date, price, genres and DRM-free flag in one step.</p>
+    <div class="row"><button class="btn primary" id="s-gogcat">Import / update GOG catalog</button>
+    <button class="btn" id="s-gogsz">Fetch GOG installer sizes</button><span class="muted">(rate-limited by GOG: about 50 games per 20 s)</span></div><div class="msg" id="s-gogmsg"></div></div>
+
+  <div class="card"><h2>Steam account setup</h2>
+    <p class="muted">Needed once, by both Steam actions below (bringing in games, and fetching sizes). The
+    key is free and only used to list Steam's catalog; the add-on reads each game's details afterwards.</p>
+    <div class="row"><b>Add-on:</b> <span id="st-addon" class="muted">checking…</span> <button class="btn" id="st-install">Install add-on</button></div><div class="msg" id="st-minst"></div>
+    <div class="row" style="margin-top:8px"><span class="muted">Steam Web API key:</span>
+      <input type="password" id="st-key" placeholder="Steam Web API key" style="width:280px" autocomplete="off"><button class="btn" id="st-keysave">Save key</button><span class="muted" id="st-keystat"></span></div>
+    <details class="help"><summary>How to get a free Steam key (about 2 minutes)</summary>
+      <ol style="margin:6px 0 0 18px;padding:0"><li>Open <a href="https://steamcommunity.com/dev/apikey" target="_blank" rel="noopener">steamcommunity.com/dev/apikey</a> and sign in to Steam.</li>
+      <li>It asks for a "Domain Name": type anything, for example <code>localhost</code>. Agree to the terms and click Register.</li>
+      <li>Copy the key it shows and paste it above, then <b>Save key</b>.</li></ol>
+      <p class="muted" style="margin:6px 0 0">Steam may require your account to be unrestricted (roughly $5 spent on Steam) and Steam Guard on your phone. The key stays on this computer and is hidden in the log.</p></details></div>
+
+  <div class="card"><h2>IGDB — add games</h2>
+    <p class="muted">Free key. Imports every real game IGDB lists for the platforms you tick (main games, remakes, remasters, ports; not DLC, mods or bundles). Games you already have are not duplicated — they just get IGDB's year, genres and score. New games have no size until you fetch one from Steam or GOG.</p>
+    <div class="row"><input type="text" id="s-igid" placeholder="Client ID" style="width:240px"><input type="password" id="s-igsec" placeholder="Client Secret" style="width:240px" autocomplete="off"><button class="btn" id="s-igsave">Save keys</button><span id="s-igstat" class="muted"></span></div>
+    <details class="help"><summary>How to get a free IGDB key (about 2 minutes)</summary>
+      <ol style="margin:6px 0 0 18px;padding:0"><li>Open <a href="https://dev.twitch.tv/console/apps" target="_blank" rel="noopener">dev.twitch.tv/console/apps</a> and sign in (a Twitch account works).</li>
+      <li>Register an application: any name, any OAuth Redirect URL such as <code>http://localhost</code>, category "Application Integration".</li>
+      <li>Copy the Client ID, generate a Client Secret, paste both above and <b>Save keys</b>.</li></ol></details>
+    <div class="chips" id="ig-plats" style="margin:10px 0"></div>
+    <label class="check"><input type="checkbox" id="ig-unrel"> also include unreleased / undated entries</label>
+    <div class="row"><button class="btn primary" id="s-igimport">Add games from IGDB</button><span class="muted">PC alone can take a few minutes</span></div><div class="msg" id="s-igimpmsg"></div></div>
+
+  <div class="card"><h2>Steam — add games</h2>
+    <p class="muted">Needs the Steam account setup above (add-on and key). Lists every app on Steam and adds
+    each real PC game — with a measured size, dates, genres and a Metacritic score when Steam has one —
+    skipping DLC, soundtracks, tools and non-Windows apps. Useful for games no other source lists. Resumable
+    and cancelable; a re-run only checks apps it hasn't settled yet.</p>
+    <button class="btn primary" id="st-catalog">Add every Steam game</button><div class="msg" id="st-catmsg"></div></div>
+
+  <div class="card"><h2>Redump — console discs</h2>
+    <p class="muted">No key. Download a system .dat (or its .zip) from redump.org/downloads for exact console disc sizes, regions and serials.</p>
+    <div class="row"><input type="file" id="d-file" accept=".dat,.xml,.zip">
+      <input type="text" id="d-platform" placeholder="platform (only if not detected)" style="width:220px">
+      <label class="check" style="margin:0"><input type="checkbox" id="d-variants"> include betas/demos/prototypes</label>
+      <button class="btn primary" id="d-go">Import</button></div>
+    <div class="msg" id="d-msg"></div></div>
+
+  <h3 style="margin:22px 0 4px">2. Fill in the essentials</h3>
+  <p class="muted" style="margin:0 0 10px">Years, genres, scores, sizes and prices for games you already have.</p>
+
+  <div class="card"><h2>IGDB — fill in details</h2>
+    <p class="muted">Uses the IGDB key set up above. Fills year, genre and score for every game you already have on a platform IGDB covers.</p>
+    <button class="btn primary" id="s-igdb">Fill years, genres &amp; scores for everything</button><div class="msg" id="s-igmsg"></div></div>
+
+  <div class="card"><h2>Steam — sizes and prices</h2>
+    <p class="muted">Uses the Steam account setup above. Three steps: link your games to Steam, test the
+    result on a sample before committing to the rest, then fetch for everything.</p>
+    <div style="margin-top:10px"><button class="btn" id="st-match">1. Match my games to Steam</button> <span class="muted">uses IGDB's exact Steam links, then, only if you saved a Steam key, exact titles from Steam's official list. Ambiguous games are skipped, never guessed</span><div class="msg" id="st-m1"></div></div>
+    <div style="margin-top:10px"><button class="btn" id="st-probe">2. Test on 200 games</button> <span class="muted">measures how many get a size; saves nothing</span><div class="msg" id="st-m2"></div><div id="st-probe-out"></div></div>
+    <div style="margin-top:10px"><button class="btn primary" id="st-sizes">3. Fetch sizes for all matched games</button> <span class="muted">skips games that already have an exact (GOG) size or a Steam size, so it is safe to run again after stopping</span><div class="msg" id="st-m3"></div></div>
+    <div style="margin-top:10px"><button class="btn" id="st-prices">Fetch Steam prices</button> <span class="muted">for games matched to Steam</span><div class="msg" id="st-m4"></div></div>
+    <p class="muted" style="margin-top:10px">Every game matched to Steam is labelled <code>steam</code> for DRM, unless a better source such as GOG's "DRM-free" already applies.</p></div>
+
+  <div class="card"><h2>RAWG — console gaps</h2>
+    <p class="muted">Free key. Fills year, genre and score for console games your disc files don't carry.</p>
+    <div class="row"><input type="password" id="rw-key" placeholder="RAWG API key" style="width:280px" autocomplete="off"><button class="btn" id="rw-keysave">Save key</button><span class="muted" id="rw-keystat"></span></div>
+    <details class="help"><summary>How to get a free RAWG key (about 1 minute)</summary>
+      <ol style="margin:6px 0 0 18px;padding:0"><li>Open <a href="https://rawg.io/apidocs" target="_blank" rel="noopener">rawg.io/apidocs</a> and sign up (free).</li>
+      <li>Your API key appears on that page (or under your account's API settings). Copy it.</li>
+      <li>Paste it above and <b>Save key</b>.</li></ol>
+      <p class="muted" style="margin:6px 0 0">Free for personal, non-commercial use. Data comes from <a href="https://rawg.io" target="_blank" rel="noopener">RAWG.io</a>, credited here and in exports as required by their terms.</p></details>
+    <button class="btn primary" id="rw-go">Fill console gaps from RAWG</button><div class="msg" id="rw-msg"></div></div>
+
+  <h3 style="margin:22px 0 4px">3. Slower or narrower sources</h3>
+  <p class="muted" style="margin:0 0 10px">Worth running eventually, but each has a reason to wait: a rate limit, a narrower scope, or both.</p>
+
+  <div class="card"><h2>SteamSpy — review scores</h2>
+    <p class="muted">No key. Review-based score (% positive) and genre tags for games already matched to Steam. Limited to one page a minute, so a full pass takes an hour or two. Only games with 10+ reviews get a score. Resumable.</p>
+    <button class="btn primary" id="st-spy">Fetch Steam review scores</button><div class="msg" id="st-spymsg"></div></div>
+
+  <div class="card"><h2>Wikidata — console dates</h2>
+    <p class="muted">No key. Free release dates for console games (PS1/PS2/PS3/PSP, GameCube, Wii, Xbox/360, Dreamcast, Saturn). The public endpoint throttles hard, so this only runs when you ask for it, never automatically. Partial coverage: games it doesn't know stay blank.</p>
+    <button class="btn primary" id="wd-go">Fill console dates from Wikidata</button><div class="msg" id="wd-msg"></div></div>
+
+  <details class="help" style="margin-top:16px"><summary>Sources not built yet</summary><div id="sources" class="muted" style="margin-top:8px"></div></details>
+</main>
+
+<main id="tab-log" style="display:none">
+  <div class="row"><b>Live log</b>
+    <select id="lg-level"><option value="all">All messages</option><option value="warn">Warnings and errors only</option></select>
+    <label class="check" style="margin:0"><input type="checkbox" id="lg-follow" checked> follow newest</label>
+    <button class="btn" id="lg-cancel" hidden>Cancel running job</button><button class="btn" id="lg-clear">Clear view</button><button class="btn" id="lg-dl">Download log</button>
+    <span class="muted" id="lg-status"></span></div>
+  <p class="muted" style="margin:0">Everything the app does, as it happens: each web request, waits for rate limits, retries, and job progress. Keys and passwords are hidden. The same lines appear in the launcher window and are saved in the <code>data/logs</code> folder.</p>
+  <pre class="logbox" id="lg-box"></pre></main>
+<main id="tab-status" style="display:none">
+  <div class="card">
+    <div class="st-head"><h2>Database overview</h2><span class="spacer"></span><button class="btn" id="st-refresh">↻ Refresh</button></div>
+    <p class="st-sub" style="margin-top:0">Live intel on your database: what's in it, when each part last changed, and when it was last checked for updates.</p>
+    <div class="st-grid" id="st-metrics"></div>
+    <div class="legend" id="st-legend">
+      <span><span class="dot green"></span> recently updated</span>
+      <span><span class="dot yellow"></span> checked recently, no change</span>
+      <span><span class="dot orange"></span> stale / not checked in a while</span>
+      <span><span class="dot red"></span> missing or problematic</span>
+    </div>
+    <h3 style="margin:6px 0 6px;font-size:13px">Sources</h3>
+    <div style="overflow:auto"><table class="st-table" id="st-sources"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px">What's in your database</h2>
+    <p class="st-sub" style="margin-top:0">Coverage per platform, and when each one last changed or was last checked.</p>
+    <div style="overflow:auto"><table class="st-table" id="st-overview"><thead></thead><tbody></tbody></table></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px">Detailed platform breakdown</h2>
+    <p class="st-sub" style="margin-top:0">Click a platform to see each field's coverage, freshness and example titles still missing it.</p>
+    <div id="st-platforms">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px">Recent activity</h2>
+    <p class="st-sub" style="margin-top:0">Every fetch, import, refresh and backup, most recent first — including runs that found nothing new.</p>
+    <div class="act-feed" id="st-activity"></div>
+  </div>
+</main>
+<div class="toast" id="toast" hidden></div>
+<dialog id="dlg-export"><h2>Export</h2><div class="muted" id="ex-scope"></div>
+  <div class="field"><label>Format</label><select id="ex-fmt"><option value="csv">CSV (Excel/Sheets)</option><option value="json">JSON</option><option value="md">Markdown table</option><option value="txt">Plain text table</option></select></div>
+  <div class="field"><label>Detail level</label><select id="ex-detail"><option value="minimal">Minimal: name, platform, year, size</option><option value="standard" selected>Standard: + region, genres, score, price, DRM</option><option value="full">Full: everything incl. sources &amp; dates</option><option value="visible">Only the columns I currently see</option></select></div>
+  <div class="msg" id="ex-msg"></div>
+  <div class="actions"><button class="btn" data-close>Cancel</button><button class="btn primary" id="ex-go">Download</button></div></dialog>
+
+<dialog id="dlg-refresh"><h2>Refresh data from online sources</h2><div class="muted" id="rf-scope"></div>
+  <div class="field"><label>Which column?</label><select id="rf-field"><option value="all">All columns (fills empty cells only)</option>
+    <option value="price">Price</option><option value="size">Size</option><option value="score">Review score</option>
+    <option value="genres">Genres</option><option value="drm">DRM status</option><option value="release_date">Release date</option><option value="orig_year">Original year</option></select></div>
+  <div class="field"><label>From which source?</label><select id="rf-source"><option value="">Automatic (every source that can fill it)</option><option value="igdb">IGDB (years, genres, scores)</option><option value="steam">Steam store (price, scores; sizes only by the slow text method)</option><option value="steam_pics">Steam depot sizes (fast; needs the add-on)</option><option value="gog">GOG (installer sizes)</option><option value="wikidata">Wikidata (console release dates, no key)</option></select></div>
+  <label class="check"><input type="checkbox" id="rf-empty" checked disabled> Only fill empty cells (keep every value I already have)</label>
+  <div class="msg" id="rf-est"></div>
+  <p class="muted">Only the games in the scope above are looked up, so pick your filters first. Results are added with their source and date, and your own edits still win.</p>
+  <div class="msg" id="rf-msg"></div>
+  <div class="actions"><button class="btn" data-close>Close</button><button class="btn primary" id="rf-go">Start</button></div></dialog>
+
+<dialog id="dlg-pack"><h2>Pack games into limited space</h2><div class="muted" id="pk-scope"></div>
+  <div class="field"><label>Where are they going?</label>
+    <div class="row"><select id="pk-kind"><option value="disk">One disk / folder</option><option value="discs">Several discs</option></select>
+      <input type="number" id="pk-n" value="10" min="1" style="width:64px" hidden><span id="pk-x" hidden>×</span>
+      <input type="number" id="pk-size" value="120" step="any"><select id="pk-unit"><option>MB</option><option selected>GB</option></select></div>
+    <div class="chips" id="pk-presets" style="margin-top:6px"></div></div>
+  <div class="field"><label>Goal</label><select id="pk-rank"><option value="count">Fit as many games as possible</option><option value="score">Fit the best-reviewed games</option></select></div>
+  <div class="field"><label>Max number of games (optional)</label><input type="number" id="pk-max" placeholder="no limit"></div>
+  <div class="msg" id="pk-msg"></div><div id="pk-out"></div>
+  <div class="actions"><button class="btn" data-close>Close</button><button class="btn" id="pk-set" hidden>Save as set</button><button class="btn" id="pk-exp" hidden>Export result</button><button class="btn primary" id="pk-go">Calculate</button></div></dialog>
+
+<dialog id="dlg-set"><h2>Save as set</h2><div class="muted" id="st-scope"></div>
+  <div class="field"><label>Set name</label><input type="text" id="st-name" style="width:100%"></div>
+  <div class="msg" id="st-msg"></div>
+  <div class="actions"><button class="btn" data-close>Cancel</button><button class="btn primary" id="st-go">Save</button></div></dialog>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function api(path,body,opt={}){
+  const r=await fetch(path,{method:body===undefined?"GET":"POST",headers:{"X-GQE":"1"},body:body===undefined?undefined:(opt.raw?body:JSON.stringify(body))});
+  if(opt.blob){if(!r.ok)throw new Error((await r.json()).error);return r.blob();}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||r.statusText);return j;
+}
+const fmtSize=b=>{if(b==null)return"?";for(const[u,d]of[["TB",1e12],["GB",1e9],["MB",1e6],["KB",1e3]])if(b>=d)return(b/d).toFixed(2)+" "+u;return b+" B"};
+const toBytes=(v,u)=>Number(v)*(u==="MB"?1e6:1e9);
+
+/* ---------- state ---------- */
+const freshF=()=>({q:"",qx:"",platforms:new Map(),regions:new Map(),genres:new Map(),drm:new Map(),yfrom:"",yto:"",yunk:false,
+  smin:"",smax:"",sunit:"GB",sknown:false,sexact:false,sunk:false,score:0,scunk:false,pmax:"",punk:false,fav:"",played:"",set:""});
+let F=freshF(),FAC=null;
+const S={page:1,size:100,sort:"name",desc:false,total:0,rows:[]};
+const sel=new Set();
+const EMPTY_MSG=`<div class="banner"><b>Your database is empty.</b> Open the <b>Data</b> tab to add games (e.g. a Redump file for PS2 sizes).</div>`;
+const COLS=[
+ {id:"name",label:"Name",sort:"name",show:true},
+ {id:"platform",label:"Platform",sort:"platform",show:true},
+ {id:"region",label:"Region",sort:"region",show:true},
+ {id:"year",label:"Year",sort:"year",show:true,num:true,edit:"release_date"},
+ {id:"size_gb",label:"Size",sort:"size",show:true,num:true,edit:"size"},
+ {id:"score",label:"Score",sort:"score",show:true,num:true,edit:"score"},
+ {id:"score_source",label:"Score source",sort:"score_source",show:false},
+ {id:"price",label:"Price",sort:"price",show:true,num:true,edit:"price"},
+ {id:"drm",label:"DRM",sort:"drm",show:true,edit:"drm"},
+ {id:"genres",label:"Genres",sort:"genre",show:true,edit:"genres"},
+ {id:"size_conf",label:"Size accuracy",sort:"size_conf",show:false},
+ {id:"orig_year",label:"Original year",sort:"orig_year",show:false,num:true},
+ {id:"discs",label:"Discs",sort:"discs",show:false,num:true},
+ {id:"serial",label:"Serial",sort:"serial",show:false},
+ {id:"id",label:"ID",sort:"id",show:false,num:true},
+];
+const DEFAULT_SHOW=COLS.filter(c=>c.show).map(c=>c.id);
+try{const saved=JSON.parse(localStorage.getItem("gd-cols")||"null");if(saved)COLS.forEach(c=>c.show=saved.includes(c.id));}catch(e){}
+
+function buildFilters(){
+  const f=[];const add=(field,op,value,u)=>f.push({field,op,value,or_unknown:!!u});
+  const grp=(field,map,incOp,excOp)=>{const inc=[],exc=[];map.forEach((v,k)=>(v==="in"?inc:exc).push(k));
+    if(inc.length)add(field,incOp,inc);if(exc.length)add(field,excOp,exc);};
+  if(F.q)add("name","~",F.q);
+  if(F.qx)add("name","!~",F.qx);
+  grp("platform",F.platforms,"=","!=");grp("region",F.regions,"~","!~");grp("genre",F.genres,":","!=");grp("drm",F.drm,"=","!=");
+  if(F.yfrom!=="")add("year",">=",F.yfrom,F.yunk);
+  if(F.yto!=="")add("year","<=",F.yto,F.yunk);
+  if(F.smin!=="")add("size",">=",F.smin+F.sunit,F.sunk);
+  if(F.smax!=="")add("size","<=",F.smax+F.sunit,F.sunk);
+  if(F.sknown)add("size","!=","unknown");
+  if(F.sexact)add("size_conf","=","exact");
+  if(F.score>0)add("score",">=",F.score,F.scunk);
+  if(F.pmax!=="")add("price","<=",F.pmax,F.punk);
+  if(F.fav)add("fav","=",F.fav);
+  if(F.played)add("played","=",F.played);
+  if(F.set)add("set","=",F.set);
+  return f;
+}
+const scopeBody=()=>sel.size?{ids:[...sel]}:{filters:buildFilters()};
+const scopeText=()=>sel.size?`${sel.size} selected game${sel.size>1?"s":""}`:`all ${S.total.toLocaleString()} games matching your filters`;
+
+/* ---------- loading & rendering ---------- */
+let timer;const reloadSoon=()=>{updateFilterUi();clearTimeout(timer);timer=setTimeout(()=>{S.page=1;load();},250)};
+async function load(){
+  try{
+    const r=await api("/api/query",{filters:buildFilters(),sort:S.sort+(S.desc?"-":""),page:S.page,page_size:S.size});
+    S.rows=r.rows;S.total=r.total;render();
+  }catch(e){$("#count").textContent="Error";S.dbEmpty=false;S.rows=[];$("#banner").innerHTML=`<div class="banner">${esc(e.message)}</div>`;}
+}
+function visCols(){return COLS.filter(c=>c.show)}
+function cell(c,r){
+  const v=r[c.id];
+  if(c.id==="size_gb"){const est=r.size_conf&&r.size_conf!=="exact";return v==null?"?":`<span class="${est?"est":""}" title="${esc((r.size_conf||"")+" ("+(r.size_source||"?")+")")}">${est?"~":""}${fmtSize(r.size_bytes)}</span>`}
+  if(c.id==="score")return v==null?"":Math.round(v)+`%`+(r.score_source?` <span class="muted" style="font-size:11px">(${esc(r.score_source)})</span>`:"");
+  if(c.id==="score_source")return v?esc(v):"";
+  if(c.id==="price")return v==null?"":`<span title="${esc((r.price_source||"")+" "+(r.price_updated||""))}">$${Number(v).toFixed(2)}</span>`;
+  if(c.id==="genres")return v?esc(v.split("|").filter(Boolean).join(", ")):"";
+  return esc(v);
+}
+function render(){
+  $("#count").textContent=`${S.total.toLocaleString()} game${S.total===1?"":"s"}`;
+  $("#scope").textContent=sel.size?`· ${sel.size} selected`:"· actions apply to all results";
+  $("#b-clearsel").hidden=!sel.size;
+  const cols=visCols();
+  $("#grid thead").innerHTML="<tr><th><input type='checkbox' id='selpage'></th><th></th>"+cols.map(c=>`<th class="${c.num?"num":""}" data-sort="${c.sort}">${c.label}${S.sort===c.sort?(S.desc?" ▼":" ▲"):""}</th>`).join("")+"</tr>";
+  $("#grid tbody").innerHTML=S.rows.map(r=>`<tr data-id="${r.id}"><td><input type="checkbox" class="rs" ${sel.has(r.id)?"checked":""}></td>
+   <td style="white-space:nowrap"><span class="star ${r.fav?"on":""}" data-game="${r.game_id}" title="Favorite">${r.fav?"★":"☆"}</span><span class="tick ${r.played?"on":""}" data-game="${r.game_id}" title="${r.played?"Played (click to unmark)":"Not played (click to mark as played)"}">✓</span></td>`+
+   cols.map(c=>`<td class="${c.num?"num":""} ${c.id==="name"?"name":""}" ${c.edit?`data-edit="${c.edit}" data-col="${c.id}" title="Double-click to edit"`:""}>${cell(c,r)}</td>`).join("")+"</tr>").join("");
+  const pages=Math.max(1,Math.ceil(S.total/S.size));
+  $("#p-info").textContent=`Page ${S.page} of ${pages}`;
+  $("#p-prev").disabled=S.page<=1;$("#p-next").disabled=S.page>=pages;
+  $("#banner").innerHTML=S.dbEmpty?EMPTY_MSG:(S.rows.length?"":`<div class="empty">No games match these filters.</div>`);
+}
+
+/* ---------- filter controls ---------- */
+function chips(el,items,map,fmt=v=>v){
+  el.innerHTML=items.map(i=>{const st=map.get(i.value);
+    return `<span class="chip ${st==="in"?"on":st==="out"?"off":""}" data-v="${esc(i.value)}" title="Click: include · again: exclude · again: clear">${esc(fmt(i.value))}<small>${i.n}</small></span>`}).join("");
+  el.onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const v=c.dataset.v,st=map.get(v);
+    if(!st)map.set(v,"in");else if(st==="in")map.set(v,"out");else map.delete(v);
+    const now=map.get(v);c.className="chip "+(now==="in"?"on":now==="out"?"off":"");reloadSoon();};
+}
+function renderChips(){
+  if(!FAC)return;
+  chips($("#f-platform"),FAC.platforms,F.platforms,v=>v.toUpperCase());
+  chips($("#f-genre"),FAC.genres.slice(0,40),F.genres);
+  chips($("#f-region"),FAC.regions,F.regions);
+  chips($("#f-drm"),FAC.drm,F.drm);
+}
+function syncInputs(){
+  $("#f-q").value=F.q;$("#f-qx").value=F.qx;$("#f-yfrom").value=F.yfrom;$("#f-yto").value=F.yto;$("#f-yunk").checked=F.yunk;
+  $("#f-smin").value=F.smin;$("#f-smax").value=F.smax;$("#f-sunit").value=F.sunit;$("#f-sknown").checked=F.sknown;$("#f-sexact").checked=F.sexact;$("#f-sunk").checked=F.sunk;
+  $("#f-score").value=F.score;$("#f-scoreval").textContent=F.score?F.score+"%+":"any";$("#f-scunk").checked=F.scunk;
+  $("#f-pmax").value=F.pmax;$("#f-punk").checked=F.punk;$("#f-fav").value=F.fav;$("#f-played").value=F.played;$("#f-set").value=F.set;$("#f-setdel").hidden=!F.set;
+}
+function updateFilterUi(){
+  const n=buildFilters().length;$("#f-count").textContent=n?`${n} active`:"none active";$("#f-clear").disabled=!n;
+  $$(".clr").forEach(b=>b.hidden=!F[b.dataset.clr].size);
+}
+function clearAllFilters(){F=freshF();syncInputs();renderChips();S.page=1;updateFilterUi();load();}
+const PRESETS=[["≤ 700 MB (CD)",700,"MB"],["≤ 1 GB",1,"GB"],["≤ 2 GB",2,"GB"],["≤ 4.7 GB (DVD)",4.7,"GB"],["≤ 8.5 GB (DVD DL)",8.5,"GB"]];
+function setupStatic(){
+  $("#f-spresets").innerHTML=PRESETS.map((p,i)=>`<span class="chip" data-i="${i}">${p[0]}</span>`).join("");
+  $("#f-spresets").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const p=PRESETS[c.dataset.i];F.smin="";F.smax=p[1];F.sunit=p[2];syncInputs();reloadSoon();};
+  $("#f-decades").innerHTML=[1980,1990,2000,2010,2020].map(d=>`<span class="chip" data-d="${d}">${d}s</span>`).join("");
+  $("#f-decades").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const d=+c.dataset.d;F.yfrom=d;F.yto=d+9;syncInputs();reloadSoon();};
+  const bind=(id,key,type)=>$(id).addEventListener(type==="chk"?"change":"input",e=>{F[key]=type==="chk"?e.target.checked:e.target.value;reloadSoon();});
+  bind("#f-q","q");bind("#f-qx","qx");bind("#f-yfrom","yfrom");bind("#f-yto","yto");bind("#f-yunk","yunk","chk");
+  bind("#f-smin","smin");bind("#f-smax","smax");bind("#f-sunit","sunit");bind("#f-sknown","sknown","chk");bind("#f-sexact","sexact","chk");bind("#f-sunk","sunk","chk");
+  bind("#f-scunk","scunk","chk");bind("#f-pmax","pmax");bind("#f-punk","punk","chk");bind("#f-fav","fav");bind("#f-played","played");
+  $("#f-score").addEventListener("input",e=>{F.score=+e.target.value;$("#f-scoreval").textContent=F.score?F.score+"%+":"any";reloadSoon();});
+  $("#f-set").addEventListener("change",e=>{F.set=e.target.value;$("#f-setdel").hidden=!F.set;reloadSoon();});
+  $("#f-setdel").onclick=async()=>{if(!confirm(`Delete set "${F.set}"? (The games themselves are kept.)`))return;await api("/api/sets_delete",{name:F.set});F.set="";await loadFacets();reloadSoon();};
+  $("#f-clear").onclick=clearAllFilters;
+  $("#filters").addEventListener("click",e=>{const b=e.target.closest(".clr");if(!b)return;F[b.dataset.clr].clear();renderChips();reloadSoon();});
+}
+async function loadFacets(){
+  const f=await api("/api/facets");FAC=f;renderChips();
+  $("#f-set").innerHTML=`<option value="">saved set: none</option>`+f.sets.map(s=>`<option value="${esc(s.name)}" ${F.set===s.name?"selected":""}>${esc(s.name)} (${s.n})</option>`).join("");
+  $("#dbinfo").textContent=`${f.total.toLocaleString()} releases in database`;
+  S.dbEmpty=!f.total;
+  return f;
+}
+
+/* ---------- table interactions ---------- */
+$("#grid").addEventListener("click",async e=>{
+  const th=e.target.closest("th[data-sort]");
+  if(th){const k=th.dataset.sort;if(S.sort===k)S.desc=!S.desc;else{S.sort=k;S.desc=false;}S.page=1;return load();}
+  if(e.target.id==="selpage"){S.rows.forEach(r=>e.target.checked?sel.add(r.id):sel.delete(r.id));return render();}
+  if(e.target.classList.contains("rs")){const id=+e.target.closest("tr").dataset.id;e.target.checked?sel.add(id):sel.delete(id);return render();}
+  const tk=e.target.closest(".tick");
+  if(tk){const on=!tk.classList.contains("on");await api("/api/flag",{game_id:+tk.dataset.game,flag:"played",value:on});return load();}
+  const st=e.target.closest(".star");
+  if(st){const on=!st.classList.contains("on");await api("/api/flag",{game_id:+st.dataset.game,flag:"favorite",value:on});return load();}
+});
+$("#grid").addEventListener("dblclick",e=>{
+  const td=e.target.closest("td[data-edit]");if(!td||td.querySelector("input"))return;
+  const tr=td.closest("tr"),row=S.rows.find(r=>r.id==tr.dataset.id),col=td.dataset.col;
+  let cur=row[col==="size_gb"?"size_bytes":col]??"";if(col==="size_gb"&&cur!=="")cur=(cur/1e9).toFixed(3)+"GB";if(col==="genres"&&cur)cur=cur.split("|").filter(Boolean).join(", ");
+  td.innerHTML=`<input type="text" value="${esc(cur)}">`;const inp=td.firstChild;inp.focus();inp.select();
+  const done=async ok=>{if(!inp.isConnected)return;const val=inp.value.trim();
+    if(ok&&val!==""&&val!==String(cur)){try{await api("/api/override",{id:row.id,field:td.dataset.edit,value:val});}catch(err){alert(err.message);}}
+    load();};
+  inp.onkeydown=k=>{if(k.key==="Enter")done(true);if(k.key==="Escape")done(false);};inp.onblur=()=>done(true);
+});
+$("#p-prev").onclick=()=>{S.page--;load()};$("#p-next").onclick=()=>{S.page++;load()};
+$("#p-size").onchange=e=>{S.size=+e.target.value;S.page=1;load()};
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>{t.hidden=true},3500);}
+$("#b-mark").onclick=e=>{e.stopPropagation();$("#markmenu").classList.toggle("open");};
+$("#markmenu").onclick=async e=>{e.stopPropagation();const b=e.target.closest("[data-flag]");if(!b)return;
+  $("#markmenu").classList.remove("open");
+  const flag=b.dataset.flag,val=b.dataset.val==="1";
+  const what={favorite:val?"favorites":"not favorites",played:val?"played":"not played"}[flag];
+  if(!sel.size&&!confirm(`Mark all ${S.total.toLocaleString()} games matching your filters as ${what}?`))return;
+  try{const r=await api("/api/flag_bulk",{...scopeBody(),flag,value:val});toast(`${r.games.toLocaleString()} game${r.games===1?"":"s"} marked as ${what}`);load();}
+  catch(err){toast(err.message);}};
+$("#b-clearsel").onclick=()=>{sel.clear();render()};
+function buildColMenu(){
+  $("#colmenu").innerHTML=`<div class="row" style="margin-bottom:6px"><button class="link" data-all="1">Select all</button><span class="muted">·</span><button class="link" data-all="0">Deselect all</button><span class="muted">·</span><button class="link" data-all="d">Reset</button></div>`+COLS.map(c=>`<label class="check"><input type="checkbox" data-c="${c.id}" ${c.show?"checked":""}> ${c.label}</label>`).join("");
+}
+$("#b-cols").onclick=e=>{e.stopPropagation();$("#colmenu").classList.toggle("open")};
+function saveCols(){try{localStorage.setItem("gd-cols",JSON.stringify(visCols().map(c=>c.id)))}catch(_){}}
+$("#colmenu").onclick=e=>{e.stopPropagation();
+  const all=e.target.closest("[data-all]");
+  if(all){COLS.forEach(c=>c.show=all.dataset.all==="d"?DEFAULT_SHOW.includes(c.id):all.dataset.all==="1");buildColMenu();saveCols();return render();}
+  const i=e.target.closest("input");if(!i)return;COLS.find(c=>c.id===i.dataset.c).show=i.checked;saveCols();render();};
+document.addEventListener("click",()=>{$("#colmenu").classList.remove("open");$("#markmenu").classList.remove("open");});
+
+/* ---------- dialogs ---------- */
+$$("[data-close]").forEach(b=>b.onclick=()=>b.closest("dialog").close());
+function openDlg(id,scopeEl){$(id).showModal();if(scopeEl)$(scopeEl).textContent="Applies to: "+scopeText();}
+$("#b-export").onclick=()=>{$("#ex-msg").textContent="";openDlg("#dlg-export","#ex-scope")};
+$("#ex-go").onclick=async()=>{
+  const fmt=$("#ex-fmt").value,d=$("#ex-detail").value;const body={...scopeBody(),sort:S.sort+(S.desc?"-":""),format:fmt};
+  if(d==="visible"){if(!visCols().length){$("#ex-msg").className="msg err";$("#ex-msg").textContent="No columns are selected. Pick some under Columns first.";return;}body.columns=visCols().map(c=>c.id);}else body.detail=d;
+  try{const blob=await api("/api/export",body,{blob:true});const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download=`gqe-export.${fmt}`;a.click();$("#ex-msg").className="msg ok";$("#ex-msg").textContent="Downloaded.";}
+  catch(e){$("#ex-msg").className="msg err";$("#ex-msg").textContent=e.message;}
+};
+$("#b-set").onclick=()=>{$("#st-msg").textContent="";openDlg("#dlg-set","#st-scope")};
+$("#st-go").onclick=async()=>{try{const r=await api("/api/sets_save",{...scopeBody(),name:$("#st-name").value});
+  $("#st-msg").className="msg ok";$("#st-msg").textContent=`Saved ${r.saved} games. Pick it under "Mine → saved set".`;await loadFacets();}
+  catch(e){$("#st-msg").className="msg err";$("#st-msg").textContent=e.message;}};
+
+async function poll(id,el,after){
+  for(;;){const j=await api("/api/job?id="+id);
+    el.className="msg";el.textContent=j.message+(j.progress!=null?` (${Math.round(j.progress*100)}%)`:"");
+    if(j.state==="done"){el.className="msg ok";if(after)after(j);return j;}
+    if(j.state==="error"){el.className="msg err";return j;}
+    if(j.state==="cancelled"){el.className="msg";el.textContent=j.message;loadFacets();loadData();load();return j;}
+    await new Promise(r=>setTimeout(r,700));}
+}
+function fmtSecs(s){if(s<5)return"a few seconds";if(s<90)return`about ${Math.round(s)} seconds`;if(s<5400)return`about ${Math.round(s/60)} minutes`;return`about ${(s/3600).toFixed(1)} hours`}
+async function estimate(){const el=$("#rf-est");el.className="msg";el.textContent="Estimating…";
+  try{const r=await api("/api/refresh_estimate",{...scopeBody(),field:$("#rf-field").value,source:$("#rf-source").value,only_missing:$("#rf-empty").checked});
+    if(r.needs.length&&!r.sources.length){el.className="msg err";el.textContent=r.needs.join(" ");}
+    else{el.textContent=`${r.to_look_up.toLocaleString()} of ${r.count.toLocaleString()} games need looking up · ${r.sources.join(" + ")} · ${fmtSecs(r.seconds)}`+(r.needs.length?` · skipped: ${r.needs.join("; ")}`:"");}}
+  catch(e){el.className="msg err";el.textContent=e.message;}}
+function fieldMode(){const all=$("#rf-field").value==="all",c=$("#rf-empty");if(all){c.checked=true;c.disabled=true;}else c.disabled=false;}
+$("#rf-field").onchange=()=>{fieldMode();estimate();};$("#rf-empty").onchange=estimate;$("#rf-source").onchange=estimate;
+$("#b-refresh").onclick=()=>{fieldMode();$("#rf-msg").textContent="";openDlg("#dlg-refresh","#rf-scope");estimate()};
+$("#rf-go").onclick=async()=>{try{const r=await api("/api/refresh",{...scopeBody(),field:$("#rf-field").value,source:$("#rf-source").value,only_missing:$("#rf-empty").checked});
+  await poll(r.job,$("#rf-msg"),()=>{load();loadFacets();});}
+  catch(e){$("#rf-msg").className="msg err";$("#rf-msg").textContent=e.message;}};
+
+const PK=[["CD 700 MB",1,700,"MB"],["DVD 4.7 GB",1,4.7,"GB"],["DVD DL 8.5 GB",1,8.5,"GB"],["Blu-ray 25 GB",1,25,"GB"],["USB/HDD 120 GB",0,120,"GB"],["500 GB",0,500,"GB"]];
+let lastPack=null;
+$("#pk-presets").innerHTML=PK.map((p,i)=>`<span class="chip" data-i="${i}">${p[0]}</span>`).join("");
+$("#pk-presets").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const p=PK[c.dataset.i];$("#pk-kind").value=p[1]?"discs":"disk";kindChange();$("#pk-size").value=p[2];$("#pk-unit").value=p[3];};
+function kindChange(){const d=$("#pk-kind").value==="discs";$("#pk-n").hidden=!d;$("#pk-x").hidden=!d;}
+$("#pk-kind").onchange=kindChange;
+$("#b-pack").onclick=()=>{$("#pk-msg").textContent="";$("#pk-out").innerHTML="";$("#pk-set").hidden=$("#pk-exp").hidden=true;openDlg("#dlg-pack","#pk-scope")};
+$("#pk-go").onclick=async()=>{
+  const n=$("#pk-kind").value==="discs"?Math.max(1,+$("#pk-n").value):1;const bytes=Math.round(toBytes($("#pk-size").value,$("#pk-unit").value));
+  const spec=n>1?`${n}x${bytes}b`:`${bytes}b`;$("#pk-msg").className="msg";$("#pk-msg").textContent="Calculating…";
+  try{const r=await api("/api/pack",{...scopeBody(),bins:spec,rank:$("#pk-rank").value,max_items:$("#pk-max").value||null});lastPack=r;
+    $("#pk-msg").className="msg ok";
+    $("#pk-msg").textContent=`${r.total_items} games, ${fmtSize(r.total_bytes)} total`+(r.skipped_unknown_size?` · ${r.skipped_unknown_size} games skipped (size unknown)`:"");
+    $("#pk-out").innerHTML=r.bins.map((b,i)=>`<div class="bin"><div class="h"><span>${r.bins.length>1?"Disc "+(i+1):"Result"}: ${b.items.length} games</span><span>${fmtSize(b.used)} / ${fmtSize(b.capacity)}</span></div>
+      <div class="bar"><i style="width:${(100*b.used/b.capacity).toFixed(1)}%"></i></div>
+      <ul>${b.items.map(x=>`<li>${esc(x.name)} <span class="muted">· ${esc(x.platform)}${x.region?" "+esc(x.region):""} · ${fmtSize(x.size_bytes)}</span></li>`).join("")}</ul></div>`).join("");
+    $("#pk-set").hidden=$("#pk-exp").hidden=!r.ids.length;
+  }catch(e){$("#pk-msg").className="msg err";$("#pk-msg").textContent=e.message;}
+};
+$("#pk-set").onclick=async()=>{const name=prompt("Name for this set:","pack-"+new Date().toISOString().slice(0,10));if(!name)return;
+  await api("/api/sets_save",{name,ids:lastPack.ids});await loadFacets();$("#pk-msg").className="msg ok";$("#pk-msg").textContent=`Saved as set "${name}".`;};
+$("#pk-exp").onclick=async()=>{const blob=await api("/api/export",{ids:lastPack.ids,format:"csv",detail:"standard",sort:"name"},{blob:true});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="gqe-pack.csv";a.click();};
+
+/* ---------- tabs & data page ---------- */
+function showTab(which){
+  $$(".tab").forEach(x=>x.classList.toggle("active",x.dataset.tab===which));
+  $("#tab-browse").style.display=which==="browse"?"flex":"none";
+  $("#tab-data").style.display=which==="data"?"flex":"none";
+  $("#tab-log").style.display=which==="log"?"flex":"none";
+  $("#tab-status").style.display=which==="status"?"flex":"none";
+  if(which==="data")loadData();
+  if(which==="log")startLog();else stopLog();
+  if(which==="status")loadStatus();
+}
+$$(".tab").forEach(t=>t.onclick=()=>showTab(t.dataset.tab));
+/* ---------- live log + job pill */
+const LOG={lines:[],last:0,timer:null,follow:true,warnOnly:false};
+function renderLog(){
+  const box=$("#lg-box"),rows=LOG.lines.filter(l=>!LOG.warnOnly||l.level==="WARNING"||l.level==="ERROR"||l.level==="CRITICAL");
+  box.innerHTML=rows.map(l=>`<div class="ll ${l.level}"><span class="t">${esc(l.t)}</span> ${esc(l.level.padEnd(7," "))} ${esc(l.msg)}</div>`).join("");
+  if(LOG.follow)box.scrollTop=box.scrollHeight;
+  $("#lg-status").textContent=`${rows.length} lines`;
+}
+async function pollLog(){try{const r=await api("/api/log?since="+LOG.last);
+  if(r.lines.length){LOG.lines=LOG.lines.concat(r.lines).slice(-3000);renderLog();}LOG.last=Math.max(LOG.last,r.last);}catch(e){}}
+function startLog(){stopLog();pollLog();LOG.timer=setInterval(pollLog,1000);}
+function stopLog(){if(LOG.timer){clearInterval(LOG.timer);LOG.timer=null;}}
+$("#lg-follow").addEventListener("change",e=>{LOG.follow=e.target.checked;renderLog();});
+$("#lg-level").addEventListener("change",e=>{LOG.warnOnly=e.target.value==="warn";renderLog();});
+$("#lg-clear").onclick=()=>{LOG.lines=[];renderLog();};
+$("#lg-dl").onclick=async()=>{try{const blob=await api("/api/log_download",{},{blob:true});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="log.txt";a.click();}catch(e){toast(e.message);}};
+let RUNNING=null;
+async function pollJobs(){try{const r=await api("/api/jobs"),run=r.jobs.find(j=>j.state==="running"),p=$("#jobpill");RUNNING=run||null;
+  if(run){p.hidden=false;p.textContent=(run.cancelling?"◌ Cancelling… ":"● ")+run.title+": "+String(run.message).slice(0,70);p.title="Working… click to watch the live log";}else p.hidden=true;
+  $("#jobcancel").hidden=$("#lg-cancel").hidden=!run||!!run.cancelling;}catch(e){}}
+async function cancelJob(){if(!RUNNING)return;
+  try{await api("/api/job_cancel",{id:RUNNING.id});toast("Cancelling… it stops at the next safe point; everything saved so far is kept.");}catch(e){toast(e.message);}pollJobs();}
+$("#jobcancel").onclick=cancelJob;$("#lg-cancel").onclick=cancelJob;
+setInterval(pollJobs,2500);
+$("#jobpill").onclick=()=>showTab("log");
+function timeAgo(iso){
+  if(!iso)return"never";
+  const s=(Date.now()-new Date(iso).getTime())/1000;
+  if(s<0)return"just now";
+  if(s<60)return"just now";
+  if(s<3600)return Math.floor(s/60)+"m ago";
+  if(s<86400)return Math.floor(s/3600)+"h ago";
+  if(s<86400*30)return Math.floor(s/86400)+"d ago";
+  if(s<86400*365)return Math.floor(s/(86400*30))+"mo ago";
+  return Math.floor(s/(86400*365))+"y ago";
+}
+const CHIT_LABEL={green:"updated",yellow:"checked",orange:"stale",red:"needs attention"};
+function chit(color,label){return `<span class="chit ${color}"><span class="dot ${color}"></span>${esc(label||CHIT_LABEL[color]||color)}</span>`;}
+function stcell(color,text){return `<span class="st-cell ${color}">${esc(text)}</span>`;}
+async function loadStatus(){
+  try{
+    const s=await api("/api/status");
+    renderStatusMetrics(s);
+    renderStatusSources(s);
+    renderStatusOverview(s);
+    renderStatusPlatforms(s);
+    renderStatusActivity(s);
+  }catch(e){$("#st-platforms").textContent=e.message;}
+}
+function renderStatusMetrics(s){
+  const f=s.file,c=s.counts;
+  const rows=[
+    ["Games",c.games.toLocaleString()],
+    ["Releases",c.releases.toLocaleString()],
+    ["Claims recorded",c.claims.toLocaleString()],
+    ["Database size",fmtSize(f.size||0)],
+    ["Schema version",s.schema_version],
+    ["Last full update",timeAgo(s.last_library_update)],
+    ["Safety copies",s.safety_copies.length?`${s.safety_copies.length} (latest ${timeAgo(s.safety_copies[s.safety_copies.length-1].modified)})`:"none yet"],
+  ];
+  $("#st-metrics").innerHTML=rows.map(([label,val])=>`<div class="st-metric"><b>${esc(String(val))}</b><span>${esc(label)}</span></div>`).join("");
+}
+function renderStatusSources(s){
+  const t=$("#st-sources");
+  if(!s.sources.length){t.innerHTML="<tbody><tr><td class=\"muted\">No sources have run yet.</td></tr></tbody>";return;}
+  t.innerHTML=`<thead><tr><th>Source</th><th class="num">Claims</th><th class="num">Runs</th><th>Last activity</th><th>Status</th></tr></thead>
+    <tbody>${s.sources.map(x=>`<tr><td>${esc(x.source)}</td><td class="num">${(x.claims||0).toLocaleString()}</td>
+      <td class="num">${x.runs?x.runs.toLocaleString():"–"}</td><td>${timeAgo(x.last_activity)}</td><td>${chit(x.color)}</td></tr>`).join("")}</tbody>`;
+}
+function renderStatusOverview(s){
+  const t=$("#st-overview");
+  if(!s.platforms.length){t.innerHTML="<tbody><tr><td class=\"muted\">Nothing yet. Import a file from the Data tab to get started.</td></tr></tbody>";return;}
+  const cols=[["size_pct","Size known","size"],["size_exact_pct","Exact size","size"],["year_pct","Year","year"],
+    ["score_pct","Score","score"],["genre_pct","Genre","genre"],["price_pct","Price","price"],["drm_pct","DRM","drm"]];
+  t.innerHTML=`<thead><tr><th>Platform</th><th class="num">Games</th>${cols.map(c=>`<th class="num">${c[1]}</th>`).join("")}<th>Last updated</th><th>Last checked</th><th>Status</th></tr></thead>
+    <tbody>${s.platforms.map(p=>`<tr><td>${esc(p.platform.toUpperCase())}</td><td class="num">${p.releases.toLocaleString()}</td>
+      ${cols.map(([k,_,fk])=>{const val=p.stats[k];const fcolor=(p.fields[fk]&&p.fields[fk].color)||"orange";
+        return `<td class="num">${val==null?"–":stcell(val==null?"orange":fcolor,val+"%")}</td>`;}).join("")}
+      <td>${timeAgo(p.last_updated)}</td><td>${timeAgo(p.last_checked)}</td><td>${chit(p.color)}</td></tr>`).join("")}</tbody>`;
+}
+function renderStatusPlatforms(s){
+  const el=$("#st-platforms");
+  if(!s.platforms.length){el.innerHTML="<p class=\"muted\">Nothing to break down yet.</p>";return;}
+  el.innerHTML=s.platforms.map((p,i)=>`<div class="plat-card${i===0?" open":""}" data-i="${i}">
+    <div class="plat-head"><span class="chev">▸</span>${chit(p.color,"")}<b>${esc(p.platform.toUpperCase())}</b>
+      <span class="muted">${p.releases.toLocaleString()} games · ${p.overall_missing_pct}% of tracked fields missing</span>
+      <span class="spacer"></span><span class="muted">updated ${timeAgo(p.last_updated)} · checked ${timeAgo(p.last_checked)}</span></div>
+    <div class="plat-body"><div class="field-grid">${Object.entries(p.fields).map(([k,f])=>`
+      <div class="field-card"><div class="fh"><b>${esc(f.label)}</b>${chit(f.missing?f.color:"green",f.missing?`${f.missing.toLocaleString()} missing (${f.missing_pct}%)`:"complete")}</div>
+        <div class="field-meta">Updated ${timeAgo(f.last_updated)} · Checked ${timeAgo(f.last_checked)}</div>
+        ${f.examples.length?`<div class="field-ex" title="${esc(f.examples.join(", "))}">e.g. ${esc(f.examples.slice(0,4).join(", "))}</div>`:""}</div>`).join("")}
+    </div></div></div>`).join("");
+}
+$("#st-platforms").onclick=e=>{const h=e.target.closest(".plat-head");if(h)h.parentElement.classList.toggle("open");};
+function renderStatusActivity(s){
+  const el=$("#st-activity");
+  if(!s.recent_activity.length){el.innerHTML="<p class=\"muted\">Nothing has run yet. Use the Data tab to fetch or import something.</p>";return;}
+  el.innerHTML=s.recent_activity.map(a=>`<div class="act-row"><span class="t">${timeAgo(a.at)}</span>
+    <span>${chit(a.ok?"green":"red",a.ok?"ok":"failed")}</span>
+    <span><b>${esc(a.source)}</b>${a.platforms?" · "+a.platforms.map(x=>x.toUpperCase()).join(", "):""}${a.summary?" — "+esc(a.summary):""}</span></div>`).join("");
+}
+$("#st-refresh").onclick=loadStatus;
+
+async function loadData(){
+  api("/api/db_info").then(d=>{$("#db-info").innerHTML=`Database: <code>${esc(d.path)}</code> · ${fmtSize(d.size)} · ${d.releases.toLocaleString()} releases`;}).catch(()=>{});
+  const a=await api("/api/adapters"),c=await api("/api/config");
+  const inst=a.extras&&a.extras.steam_pics&&a.extras.steam_pics.installed;
+  $("#st-keystat").textContent=c.steam&&c.steam.api_key_set?"✓ key saved":"no key saved";$("#st-key").placeholder=c.steam&&c.steam.api_key_set?"Steam key saved (leave blank to keep)":"Steam Web API key";
+  $("#rw-keystat").textContent=c.rawg&&c.rawg.api_key_set?"✓ key saved":"no key saved";$("#rw-key").placeholder=c.rawg&&c.rawg.api_key_set?"RAWG key saved (leave blank to keep)":"RAWG API key";
+  $("#st-addon").textContent=inst?"✓ installed":"not installed";$("#st-install").hidden=!!inst;
+  $("#s-igid").value=c.igdb.client_id||"";$("#s-igsec").placeholder=c.igdb.client_secret_set?"Client Secret (saved, leave blank to keep)":"Client Secret";
+  $("#s-igstat").textContent=(c.igdb.client_id&&c.igdb.client_secret_set)?"✓ keys saved":"keys needed";
+  $("#sources").innerHTML=`<p><b>Not built yet:</b></p><ul>`+Object.entries(a.planned).map(([k,v])=>`<li><b>${esc(k)}</b>: ${esc(v)}</li>`).join("")+"</ul>";
+}
+async function runSource(source,msgEl,options,fmt){msgEl.className="msg";msgEl.textContent="Starting…";
+  try{const r=await api("/api/update_source",{source,options:options||{}});
+    await poll(r.job,msgEl,j=>{const x=j.result||{};if(fmt){msgEl.textContent=fmt(x);loadFacets();loadData();load();return;}msgEl.textContent=x.records!=null?`Done: ${x.records} read · ${x.added??0} new · ${x.matched??0} matched games you already had · ${x.refreshed??0} updated`:`Done: ${x.updated??0} values updated`+(x.notes&&x.notes.length?` (${x.notes.join("; ")})`:"");loadFacets();loadData();load();});}
+  catch(e){msgEl.className="msg err";msgEl.textContent=e.message;}}
+$("#bk-dl").onclick=async()=>{const m=$("#bk-msg");m.className="msg";m.textContent="Preparing backup…";
+  try{const blob=await api("/api/backup_download",{},{blob:true});const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+    a.download=`backup-${new Date().toISOString().slice(0,10)}.zip`;a.click();m.className="msg ok";m.textContent=`Downloaded (${fmtSize(blob.size)}). Keep it somewhere safe.`;}
+  catch(e){m.className="msg err";m.textContent=e.message;}};
+$("#bk-restore").onclick=async()=>{const f=$("#bk-file").files[0],m=$("#bk-msg");if(!f){m.className="msg err";m.textContent="Choose a backup file first.";return;}
+  if(!confirm("Replace EVERYTHING in this database with the backup? A safety copy of the current database is kept in the backups folder."))return;
+  m.className="msg";m.textContent="Restoring…";
+  try{const r=await api("/api/restore",await f.arrayBuffer(),{raw:true});m.className="msg ok";
+    m.textContent=`Restored ${r.releases.toLocaleString()} releases.`+(r.safety_copy?` Previous database saved as ${r.safety_copy}.`:"");
+    await loadFacets();loadData();load();}
+  catch(e){m.className="msg err";m.textContent=e.message;}};
+const gb=v=>`${v} GB`;
+function probeHtml(x){
+  const pct=x.asked?Math.round(100*x.with_size/x.asked):0;
+  const verdict=pct>=60?`<b style="color:var(--ok)">Looks good (${pct}% got a size).</b>`:`<b style="color:var(--warn)">Low coverage (${pct}%).</b> Steam may be withholding depot data from anonymous logins for many games; a size from this method would be missing for those.`;
+  const cmp=x.compared_count?`<p>Compared with GOG's exact installer sizes on ${x.compared_count} games in both stores: Steam's size is <b>${x.median_ratio_vs_gog}×</b> GOG's (median). Around 1× to 3× is expected, since Steam counts installed size and GOG's installers are compressed.</p>`:"<p class='muted'>No games in the sample have a GOG size to compare with.</p>";
+  const ex=x.examples.length?`<table class="stats"><tr><th>Sample</th><th class="num">Size</th><th>Record type</th></tr>${x.examples.map(e=>`<tr><td>${esc(e.name)}</td><td class="num">${gb(e.gb)}</td><td>${e.kind==="manifest"?"measured":"older format"}</td></tr>`).join("")}</table>`:"";
+  return `<div style="margin-top:8px">${verdict}<p>${x.with_size} of ${x.asked} returned a size (${x.manifest_sizes} measured, ${x.maxsize_only} older format); ${x.no_size} had no depot data; ${x.not_a_game?x.not_a_game+" were not games (DLC, soundtrack, tool); ":""}${x.not_returned} weren't returned at all.${x.has_original_date?` ${x.has_original_date} carry an original release year, used to catch same-title different games.`:""}</p>${cmp}${x.census?`<details class="help"><summary>What Steam actually returns (field census, ${x.census_total} apps)</summary><table class="stats">${Object.entries(x.census).map(([k,v])=>`<tr><td>${esc(k)}</td><td class="num">${v}</td></tr>`).join("")}</table></details>`:""}${x.elapsed_s!=null?`<p>Took ${x.elapsed_s} s (${x.games_per_sec} games/s, including login). At that rate all ${x.total_linked.toLocaleString()} linked games would take about <b>${x.projected_minutes>=90?(x.projected_minutes/60).toFixed(1)+" hours":Math.round(x.projected_minutes)+" minutes"}</b>; big batches are usually faster per game than a small test.</p>`:""}${ex}</div>`;
+}
+$("#st-keysave").onclick=async()=>{const v=$("#st-key").value.trim(),m=$("#st-minst");if(!v){m.className="msg err";m.textContent="Paste the key first.";return;}
+  try{await api("/api/config",{steam:{api_key:v}});$("#st-key").value="";m.className="msg ok";m.textContent="Key saved (stored only on this computer).";loadData();}catch(e){m.className="msg err";m.textContent=e.message;}};
+$("#st-catalog").onclick=()=>runSource("steam_catalog",$("#st-catmsg"),{},x=>`Checked ${x.to_check.toLocaleString()} apps: added ${x.games_added.toLocaleString()} new games, linked ${x.linked_to_existing.toLocaleString()} you already had, skipped ${x.skipped_not_games.toLocaleString()} non-games. ${x.already_linked.toLocaleString()} were already linked and ${x.already_checked.toLocaleString()} already checked, out of ${x.apps_on_steam.toLocaleString()} apps on Steam.`);
+$("#st-spy").onclick=()=>runSource("steamspy_scores",$("#st-spymsg"),{},x=>`Went through ${x.pages} page(s) from page ${x.resumed_from_page}: ${x.scores_saved.toLocaleString()} scores and ${x.genres_saved.toLocaleString()} genre tags saved, ${x.too_few_reviews.toLocaleString()} games had too few reviews. Run again to continue if it stopped early.`);
+$("#st-prices").onclick=()=>runSource("steam_prices",$("#st-m4"),{},x=>`Saved ${(x.updated||0).toLocaleString()} prices.`+((x.notes&&x.notes.length)?` ${x.notes.join("; ")}`:""));
+$("#rw-keysave").onclick=async()=>{const v=$("#rw-key").value.trim(),m=$("#rw-msg");if(!v){m.className="msg err";m.textContent="Paste the key first.";return;}
+  try{await api("/api/config",{rawg:{api_key:v}});$("#rw-key").value="";m.className="msg ok";m.textContent="Key saved (stored only on this computer).";loadData();}catch(e){m.className="msg err";m.textContent=e.message;}};
+$("#rw-go").onclick=()=>runSource("rawg_consoles",$("#rw-msg"),{},x=>`Saved ${(x.updated||0).toLocaleString()} values.`+((x.notes&&x.notes.length)?` ${x.notes.join("; ")}`:""));
+$("#st-install").onclick=()=>runSource("steam_install",$("#st-minst"),{},()=>"Installed.");
+$("#st-match").onclick=()=>runSource("steam_match",$("#st-m1"),{},x=>`Linked ${x.newly_linked.toLocaleString()} games to Steam (${x.linked_via_igdb.toLocaleString()} by IGDB's exact IDs, ${x.linked_via_steam_list.toLocaleString()} by title from Steam's list; ${x.already_linked.toLocaleString()} were already linked). ${x.ambiguous_skipped.toLocaleString()} ambiguous and ${x.unmatched.toLocaleString()} unmatched games were skipped, out of ${x.pc_games.toLocaleString()} PC games.`+(x.linked_via_steam_list===0&&x.unmatched>0&&x.methods.length===1?" A Steam key (optional) can link more by title.":""));
+$("#st-probe").onclick=()=>{$("#st-probe-out").innerHTML="";runSource("steam_probe",$("#st-m2"),{count:200},x=>{$("#st-probe-out").innerHTML=probeHtml(x);return "Test finished. Nothing was saved.";});};
+$("#st-sizes").onclick=()=>runSource("steam_sizes",$("#st-m3"),{},x=>`Saved ${(x.updated||0).toLocaleString()} sizes.`+(x.skipped_already_sized?` Skipped ${x.skipped_already_sized.toLocaleString()} games that already had a Steam size.`:"")+((x.notes&&x.notes.length)?` ${x.notes.join("; ")}`:""));
+function updateLibraryClick(mode,btn){const other=mode==="new"?$("#ul-fill"):$("#ul-new");
+  const m=$("#ul-msg");m.className="msg";m.textContent="Starting…";btn.disabled=other.disabled=true;$("#ul-out").innerHTML="";
+  api("/api/update_library",{mode}).then(r=>poll(r.job,m,j=>{
+    const x=j.result;
+    if(x){$("#ul-out").innerHTML="<ul>"+x.lines.map(l=>`<li>${esc(l)}</li>`).join("")+"</ul>";}
+    loadFacets();loadData();load();
+  })).catch(e=>{m.className="msg err";m.textContent=e.message;}).finally(()=>{btn.disabled=other.disabled=false;});}
+$("#ul-new").onclick=()=>updateLibraryClick("new",$("#ul-new"));
+$("#ul-fill").onclick=()=>updateLibraryClick("new_and_fill",$("#ul-fill"));
+$("#wd-go").onclick=()=>runSource("wikidata_consoles",$("#wd-msg"),{},x=>`Saved ${(x.updated||0).toLocaleString()} values.`+((x.notes&&x.notes.length)?` ${x.notes.join("; ")}`:""));
+$("#s-gogcat").onclick=()=>runSource("gog_catalog",$("#s-gogmsg"));
+$("#s-gogsz").onclick=()=>runSource("gog_sizes",$("#s-gogmsg"));
+const IG_PLATS=[["pc","PC"],["ps1","PS1"],["ps2","PS2"],["ps3","PS3"],["psp","PSP"],["gc","GameCube"],["wii","Wii"],["xbox","Xbox"],["x360","Xbox 360"],["dc","Dreamcast"],["saturn","Saturn"]];
+const igSel=new Set(["pc"]);
+$("#ig-plats").innerHTML=IG_PLATS.map(([k,l])=>`<span class="chip ${igSel.has(k)?"on":""}" data-k="${k}">${l}</span>`).join("");
+$("#ig-plats").onclick=e=>{const c=e.target.closest(".chip");if(!c)return;const k=c.dataset.k;igSel.has(k)?igSel.delete(k):igSel.add(k);c.classList.toggle("on");};
+$("#s-igimport").onclick=()=>{if(!igSel.size){const m=$("#s-igimpmsg");m.className="msg err";m.textContent="Tick at least one platform.";return;}
+  runSource("igdb_import",$("#s-igimpmsg"),{platforms:[...igSel],unreleased:$("#ig-unrel").checked});};
+$("#s-igdb").onclick=()=>runSource("igdb_all",$("#s-igmsg"));
+$("#s-igsave").onclick=async()=>{const m=$("#s-igmsg");try{const body={igdb:{client_id:$("#s-igid").value.trim()}};const sec=$("#s-igsec").value.trim();if(sec)body.igdb.client_secret=sec;
+  await api("/api/config",body);$("#s-igsec").value="";m.className="msg ok";m.textContent="Saved (stored only on this computer).";loadData();}catch(e){m.className="msg err";m.textContent=e.message;}};
+$("#d-go").onclick=async()=>{const f=$("#d-file").files[0],m=$("#d-msg");if(!f){m.className="msg err";m.textContent="Choose a file first.";return;}
+  m.className="msg";m.textContent="Uploading…";
+  try{const q=new URLSearchParams({name:f.name,platform:$("#d-platform").value,variants:$("#d-variants").checked?"1":"0"});
+    const r=await api("/api/upload_dat?"+q,await f.arrayBuffer(),{raw:true});
+    await poll(r.job,m,async j=>{m.textContent=`Imported ${j.result.imported} releases.`;await loadFacets();loadData();load();});}
+  catch(e){m.className="msg err";m.textContent=e.message;}};
+$("#c-go").onclick=async()=>{const f=$("#c-file").files[0],m=$("#c-msg");if(!f){m.className="msg err";m.textContent="Choose a file first.";return;}
+  try{const r=await api("/api/import_csv",await f.arrayBuffer(),{raw:true});m.className="msg ok";
+    m.textContent=`Applied ${r.applied} values`+(r.skipped?`, skipped ${r.skipped}: ${r.errors.join("; ")}`:"");load();}
+  catch(e){m.className="msg err";m.textContent=e.message;}};
+$("#quit").onclick=async()=>{if(!confirm("Stop Game Query Engine? You can start it again from the launcher."))return;
+  try{await api("/api/shutdown",{});}catch(_){} document.body.innerHTML="<div class='empty'>Game Query Engine has stopped. You can close this tab.</div>";};
+
+api("/api/info").then(i=>{$("#app-name").textContent=i.name;$("#app-ver").textContent="v"+i.version;document.title=i.name;}).catch(()=>{});
+setupStatic();buildColMenu();updateFilterUi();loadFacets().then(load);
+</script>
+</body>
+</html>
